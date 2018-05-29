@@ -13,13 +13,6 @@ class NGram():
 
 
     def sent_to_n_grams(self, sent,n):
-        # self.n_grams[0][sent[0]]+=1
-        # for i in range(1,len(sent)):
-        #     big = (sent[i-1],sent[i])
-        #     bigrams[big]+=1
-        #     unigrams[sent[i]]+=1
-
-        #sent.insert(0,",<s>")
         for i in range(n-1,len(sent)):
             self.n_grams[n-1][" ".join(sent[i-(n-1):i+1])]+=1
         if n>1:
@@ -30,11 +23,13 @@ class NGram():
             for line in ep:
                 sent = line.split()
                 sent = [s.lower() for s in sent if s not in string.punctuation]
-                #sent.append("<e>")
+                sent.insert(0,"<s>")
+                sent.append("<e>")
                 if len(sent)==0:
                     continue
                 self.sent_to_n_grams(sent, self.n)
-        #del self.n_grams[0]["<e>"]
+        del self.n_grams[0]["<e>"]
+        del self.n_grams[0]["<s>"]
 
     def get_counts_of_counts(self):
         for i,d in enumerate(self.n_grams):
@@ -43,77 +38,100 @@ class NGram():
 
     def calculate_lamba_r(self,r,k, n):
         n_1 = self.n_grams_counts[n-1][1]
-        return (1 - (((r + 1) * self.n_grams_counts[n-1][r + 1]) / r * self.n_grams_counts[n-1][r])) / (1 - ((k + 1) * self.n_grams_counts[n-1][k + 1] / n_1))
+        nom =  (1 - (((r + 1) * self.n_grams_counts[n-1][r + 1])/(r * self.n_grams_counts[n-1][r])))
+        den = (1 - ((k + 1) * self.n_grams_counts[n-1][k + 1] / n_1))
+        return nom/den
 
     def calculate_a_h(self,n,h,k):
         #p.215
         lambdas = []
         sum = 0
-        for i in range(k+1):
+        for i in range(1,k+1):
             lambdas.append(self.calculate_lamba_r(i,k,n))
-        for k,v in self.n_grams[n-1].items():
-            if v>=1 and v<=k:
-                sum+=(v/self.n_grams[n-1][h])*lambdas[v-1]
+        for w,v in self.n_grams[n-1].items():
+            if w.split()[0]==h and v>=1 and v<=k:
+                sum+=(v/self.n_grams[0][h])*lambdas[v-1]
 
         return sum
 
-    def turing_good_discounting(self, h,w, n=2):
-        # it=1
-        # discounts = {}
-        # for count in c_bi.items():
-        #     try:
-        #         r_star = (it+1)*c_bi[it]/count[1]
-        #         discounts[it] = r_star
-        #         it+=1
-        #     except IndexError:
-        #         r_star = 0
-        #         discounts[it] = r_star
+    def turing_good_discounting(self, w, h, n):
         k=5
+        h_s = " ".join(h)
+        r = self.n_grams[n-1][" ".join([h_s,w])]
 
-        r = self.n_grams[1][" ".join([h,w])]
+        if n==1:
+            if self.n_grams[0][w]>0:
+                return self.n_grams[0][w]/sum(self.n_grams[0].values())
+            else:
+                return 1/len(self.n_grams[0])
+
         if r>0:
             if r<k:
-                lambda_r = self.calculate_lamba_r(r,k,self.n)
+                lambda_r = self.calculate_lamba_r(r,k,n)
                 r_star = (1-lambda_r)*r
             else:
                 r_star = r
-            p = r_star / self.n_grams[n-2][h]
+            p  = r_star / self.n_grams[n - 2][h_s]
         else:
             #P.220
-            p = self.n_grams[0][h]/sum(self.n_grams[0].values())
+            #p = self.n_grams[0][h]/sum(self.n_grams[0].values())
+            p = self.calculate_a_h(n,h_s,k)*self.turing_good_discounting(w, " ".join(h[1:]),n-1)
         return p
 
-    def get_counts_big(h):
-        s = 0
-        for k,v in bigrams.items():
-            if k[0]==h:
-                s+=v
 
-        return s
-
-    def absolute_discounting(self, w,h, n):
+    def absolute_discounting(self, w, h, n):
         #p.179
-        #assume history independent h
-        b = self.n_grams_counts[n-1][1]/(self.n_grams_counts[n-1][1]+2*self.n_grams_counts[n-1][2])
+        #assume history independent b
+
+        if n == 1:
+            if self.n_grams[0][w] > 0:
+                return self.n_grams[0][w] / sum(self.n_grams[0].values())
+            else:
+                return 1 / len(self.n_grams[0])
+
+        #p.180
+        #calculate discounting parameter
+        b = self.n_grams_counts[1][1]/(self.n_grams_counts[1][1]+2*self.n_grams_counts[1][2])
+
+
         if self.n_grams[n-1][" ".join([h,w])]>0:
+            #calculate probability of seen n-gram
             p = (self.n_grams[n-1][" ".join([h,w])]-b)/self.n_grams[n-2][h]
         else:
-            nom = (sum(self.n_grams[n-2].values())-self.n_grams[n-2][h])
-            beta = self.n_grams[n-2][w]/sum(self.n_grams[n-2].values())
-            p = b*(nom/self.n_grams[n-2][h])*beta
+            #backoff
+            nom = len(self.n_grams[0])-(len(self.n_grams[0])-self.n_grams[0][h])
+            p = b*(nom/self.n_grams[n-2][h])*self.absolute_discounting(w," ".join(h.split()[1:]),n-1)
         return p
 
+
+    def clac_n_plus(self, h,w,n):
+        s = 0
+        for w in self.n_grams[0].keys():
+            for k,v in self.n_grams[n-1].items():
+                if k == " ".join([h,w]) and v>=0:
+                    s+=1
+        return s
 
     def interpolated_absolute_discounting(self, w, h,n):
         # p.192
         # assume history independent b
+
+        #if n==1 just take the relative frequence
+        if n==1:
+            if self.n_grams[0][w]>0:
+                return self.n_grams[0][w]/sum(self.n_grams[0].values())
+            else:
+                return 1/len(self.n_grams[0])
+
         b = self.n_grams_counts[n-1][1]/(self.n_grams_counts[n-1][1]+2*self.n_grams_counts[n-1][2])
-        nom = (sum(self.n_grams[n-2].values())-self.n_grams[n-2][h])
-        beta = self.n_grams[n-2][w]/sum(self.n_grams[n-2].values())
-        p = (max((self.n_grams[n-1][" ".join([h, w])] - b),0) / self.n_grams[n-2][h]) + b * (nom / self.n_grams[n-2][h]) * beta
+        nom = len(self.n_grams[0])-(len(self.n_grams[0])-self.n_grams[0][h])
+
+        p = (max((self.n_grams[n-1][" ".join([h, w])] - b),0) / self.n_grams[n-2][h]) + \
+            (b * (nom / self.n_grams[n-2][h])) * self.interpolated_absolute_discounting(w," ".join(h.split()[1:]),n-1)
         return p
 
 class Generator:
+
     def generate(self, l, d):
         sentence = []
         word_list = list(d.n_grams[0].keys())
@@ -125,12 +143,13 @@ class Generator:
             max = 0
             next_w_i = -1
             for i,w in enumerate(word_list):
-                p = d.interpolated_absolute_discounting(current_word,w,2)
+                p = d.turing_good_discounting(w,[current_word],2)
                 if p>max:
                     max = p
                     next_w_i = i
 
             sentence.append(word_list.pop(next_w_i))
+            current_word = sentence[-1]
         print(sentence)
 
 if __name__=="__main__":
@@ -144,15 +163,7 @@ if __name__=="__main__":
     d.read_dataset("test")
     d.get_counts_of_counts()
 
-    # print(len(bigrams))
-    #
-    # #get counts of counts
-    # counts_of_counts_bi = Counter(bigrams.values())
-    # counts_of_counts_uni = Counter(unigrams.values())
-    p1 = d.absolute_discounting("people", "the",2)
-    p2 = d.turing_good_discounting("people", "the")
-    p3 = d.interpolated_absolute_discounting("people","the",2)
-    print(p1,p2,p3)
-    gen  =  Generator()
+    gen = Generator()
     gen.generate(5,d)
+
 
