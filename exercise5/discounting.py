@@ -37,6 +37,7 @@ class NGram():
 
 
     def calculate_lamba_r(self,r,k, n):
+        #P.216
         n_1 = self.n_grams_counts[n-1][1]
         nom =  (1 - (((r + 1) * self.n_grams_counts[n-1][r + 1])/(r * self.n_grams_counts[n-1][r])))
         den = (1 - ((k + 1) * self.n_grams_counts[n-1][k + 1] / n_1))
@@ -55,9 +56,10 @@ class NGram():
         return sum
 
     def turing_good_discounting(self, w, h, n):
+        #Katz model using turing-good discounting
+        #assume k==5
         k=5
-        h_s = " ".join(h)
-        r = self.n_grams[n-1][" ".join([h_s,w])]
+        r = self.n_grams[n-1][" ".join([h,w])]
 
         if n==1:
             if self.n_grams[0][w]>0:
@@ -71,11 +73,11 @@ class NGram():
                 r_star = (1-lambda_r)*r
             else:
                 r_star = r
-            p  = r_star / self.n_grams[n - 2][h_s]
+            p  = r_star / self.n_grams[n - 2][h]
         else:
             #P.220
-            #p = self.n_grams[0][h]/sum(self.n_grams[0].values())
-            p = self.calculate_a_h(n,h_s,k)*self.turing_good_discounting(w, " ".join(h[1:]),n-1)
+            #backoff according Katz model
+            p = self.calculate_a_h(n,h,k)*self.turing_good_discounting(w, " ".join(h.split()[1:]),n-1)
         return p
 
 
@@ -143,7 +145,7 @@ class Generator:
             max = 0
             next_w_i = -1
             for i,w in enumerate(word_list):
-                p = d.turing_good_discounting(w,[current_word],2)
+                p = d.turing_good_discounting(w,current_word,2)
                 if p>max:
                     max = p
                     next_w_i = i
@@ -156,14 +158,25 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', default='./Europarl.txt')
     parser.add_argument('-n', type=int, default=2)
+    parser.add_argument('-sl', type=int, default=5, help="sentence length")
 
     args = parser.parse_args()
 
     d = NGram(args.n)
-    d.read_dataset("test")
+    d.read_dataset(args.data)
     d.get_counts_of_counts()
 
+    #testing part
+    p1= d.turing_good_discounting("people","the",2)
+    p2 = d.turing_good_discounting("people","table",2)
+    p3= d.absolute_discounting("people","the",2)
+    p4 = d.absolute_discounting("people","table",2)
+    p5= d.interpolated_absolute_discounting("people","the",2)
+    p6 = d.interpolated_absolute_discounting("people","table",2)
+    print(p1, p2, p3,p4,p5,p6)
+
+    #generator. can be too slow
     gen = Generator()
-    gen.generate(5,d)
+    gen.generate(args.sl,d)
 
 
