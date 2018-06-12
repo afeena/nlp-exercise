@@ -14,6 +14,8 @@ class NGram():
         self.tags = [defaultdict(int) for i in range(self.n)]
         self.tags_counts = [Counter() for i in range(self.n)]
         self.tag_text = defaultdict(int)
+        self.lambdas = []
+        self.a_h_cache = {}
 
 
     def sent_to_n_grams(self, sent, n, destination):
@@ -69,11 +71,13 @@ class NGram():
 
                 self.sent_to_n_grams(tag_sent, self.n, self.tags)
         del self.tags[0]["<e>"]
+
         #del self.tags[0]["<s>"]
 
     def count(self):
         self.get_counts_of_counts(self.n_grams,self.n_grams_counts)
         self.get_counts_of_counts(self.tags,self.tags_counts)
+        self.precalc_lambdas(5)
 
     def get_counts_of_counts(self, source, dest):
         for i,d in enumerate(source):
@@ -114,18 +118,22 @@ class NGram():
         den = (1 - ((k + 1) * self.tags_counts[n-1][k + 1] / n_1))
         return nom/den
 
+    def precalc_lambdas(self,k):
+        for i in range(1,k+1):
+            self.lambdas.append(self.calculate_lamba_r(i,k,2))
+
     def calculate_a_h(self,n,h,k):
         #p.215
-        lambdas = []
+        if h in self.a_h_cache.keys():
+            return self.a_h_cache[h]
+
         sum = 0
-        for i in range(1,k+1):
-            lambdas.append(self.calculate_lamba_r(i,k,n))
         for w,v in self.n_grams[n-1].items():
             if w[0]==h and v>=1 and v<=k:
-                sum+=(v/self.n_grams[0][h])*lambdas[v-1]
+                sum+=(v/self.n_grams[0][h])*self.lambdas[v-1]
 
+        self.a_h_cache[h] = sum
         return sum
-
 
 
     def turing_good_discounting(self, tag, word, n=2):
