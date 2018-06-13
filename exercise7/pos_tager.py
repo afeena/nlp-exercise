@@ -2,6 +2,7 @@ from collections import defaultdict, Counter
 import string
 import cProfile
 import numpy as np
+import argparse
 
 class NGram():
     def __init__(self, n):
@@ -187,9 +188,9 @@ class NGram():
 
 
 class POS_tagger:
-    def __init__(self):
+    def __init__(self, verbose):
         self.ngram = NGram(2)
-        self.cache = {}
+        self.verbose = verbose
 
 
     def train(self, text_train, tags_train):
@@ -213,7 +214,8 @@ class POS_tagger:
                 results.append(res)
 
 
-        self.score_by_tokens(references,results)
+        if self.verbose:
+            self.score_by_tokens(references,results)
 
     def score_by_tokens(self, ref, res):
         pos_tags = list(self.ngram.tags[0].keys())
@@ -224,6 +226,7 @@ class POS_tagger:
                 if r1 != r2:
                     post_tags_wrong[r1]+=1
                 post_tags_occ[r1]+=1
+
 
         print("error rate by tokens", sum(post_tags_wrong.values())/sum(post_tags_occ.values()))
 
@@ -260,10 +263,24 @@ class POS_tagger:
 
 
 if __name__=="__main__":
-    pt = POS_tagger()
-    pt.train("./wsj/wsj.text.tr", "./wsj/wsj.pos.tr")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-train_text', default="./wsj/wsj.text.tr")
+    parser.add_argument('-train_pos', default="./wsj/wsj.pos.tr")
+    parser.add_argument('-test_text', default="./wsj/wsj.text.test")
+    parser.add_argument('-test_pos',default="./wsj/wsj.pos.test")
+    parser.add_argument('--verbose', help="show error rates", default=None)
+    parser.add_argument('--interactive', help="console mode tagging", default=None)
+
+    args = parser.parse_args()
+    pt = POS_tagger(args.verbose)
+    pt.train(args.train_text,args.train_pos)
     print("train_done")
-    pt.test("./wsj/wsj.text.test", "./wsj/wsj.pos.test")
+    pt.test(args.test_text,args.test_pos)
+    if args.interactive:
+        print("prinv Ctrl+C to exit")
+        while True:
+            seq = input()
+            print(pt.tag_sequence(seq))
 
 
 
