@@ -63,7 +63,7 @@ class NGram():
     def count(self):
         self.get_counts_of_counts(self.n_grams,self.n_grams_counts)
         self.get_counts_of_counts(self.tags,self.tags_counts)
-        self.precalc_lambdas(5)
+        self.precalc_lambdas(3)
         self.n_grams_sums[0] = sum(self.n_grams[0].values())
         self.tags_sums[0] = sum(self.tags[0].values())
 
@@ -163,7 +163,7 @@ class NGram():
     def turing_good_discounting(self, tag, word, n=2):
         #Katz model using turing-good discounting
         #assume k==5
-        k=5
+        k=3
         r = self.tag_text[(word,tag)]
 
         if n==1:
