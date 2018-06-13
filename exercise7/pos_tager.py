@@ -63,7 +63,7 @@ class NGram():
     def count(self):
         self.get_counts_of_counts(self.n_grams,self.n_grams_counts)
         self.get_counts_of_counts(self.tags,self.tags_counts)
-        self.precalc_lambdas(3)
+        self.precalc_lambdas(5)
         self.n_grams_sums[0] = sum(self.n_grams[0].values())
         self.tags_sums[0] = sum(self.tags[0].values())
 
@@ -163,7 +163,7 @@ class NGram():
     def turing_good_discounting(self, tag, word, n=2):
         #Katz model using turing-good discounting
         #assume k==5
-        k=3
+        k=5
         r = self.tag_text[(word,tag)]
 
         if n==1:
@@ -192,8 +192,8 @@ class POS_tagger:
         self.cache = {}
 
 
-    def train(self):
-        self.ngram.read_dataset("./wsj/wsj.text.tr", "./wsj/wsj.pos.tr", size=100000)
+    def train(self, text_train, tags_train):
+        self.ngram.read_dataset(text_train, tags_train, size=None)
         self.ngram.count()
         self.ngram.get_prob_tag_bigram()
         self.tags_voc = list(self.ngram.tags[0].keys())
@@ -212,20 +212,24 @@ class POS_tagger:
                 res = self.tag_sequence(to_tag)
                 results.append(res)
 
-        err  = 0
-        nt = 0
-        seq_erro = 0
-        for ref, res in zip(references,results):
-            if ref!=res:
-                seq_erro+=1
-            for r1,r2 in zip(ref,res):
-                if r1!=r2:
-                    err+=1
-                nt+=1
 
-        err_rate = err/nt
-        print(err_rate)
-        print(seq_erro/len(references))
+        self.score_by_tokens(references,results)
+
+    def score_by_tokens(self, ref, res):
+        pos_tags = list(self.ngram.tags[0].keys())
+        post_tags_wrong = defaultdict(int)
+        post_tags_occ = defaultdict(int)
+        for rf, rs in zip(ref, res):
+            for r1, r2 in zip(rf, rs):
+                if r1 != r2:
+                    post_tags_wrong[r1]+=1
+                post_tags_occ[r1]+=1
+
+        print("error rate by tokens", sum(post_tags_wrong.values())/sum(post_tags_occ.values()))
+
+        for k,v in post_tags_wrong.items():
+            print("{}:{}\n".format(k,v/post_tags_occ[k]))
+
 
     def tag_sequence(self, sequence):
         if type(sequence) is str:
@@ -239,7 +243,10 @@ class POS_tagger:
             max = 0
             for tag in self.tags_voc:
                 r = ((self.ngram.get_prob_word(w)*self.ngram.get_prob_tag_word(tag,w))/self.ngram.get_prob_tag(tag))*self.ngram.tags_bigrams_probs[prev_tag,tag]
+                #add-one
                 #r = self.ngram.get_prob_word_given_tag(w,tag) * self.ngram.tags_bigrams_probs[prev_tag,tag]
+
+                #without smoothing
                 #r = self.ngram.without_smoothing(w,tag,prev_tag)
                 if r>max:
                     max = r
@@ -254,10 +261,8 @@ class POS_tagger:
 
 if __name__=="__main__":
     pt = POS_tagger()
-    pt.train()
+    pt.train("./wsj/wsj.text.tr", "./wsj/wsj.pos.tr")
     print("train_done")
-    seq = pt.tag_sequence("I am the student")
-    print(seq)
     pt.test("./wsj/wsj.text.test", "./wsj/wsj.pos.test")
 
 
