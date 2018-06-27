@@ -38,10 +38,12 @@ def per(hyp,ref):
     hyp_counter = Counter(hyp)
 
     s = 0
+
+    #get insertions and substitutions and delitions
     for w in hyp:
         s+=abs(ref_counter[w]-hyp_counter[w])
 
-    d_per = s#0.5*(abs(ref_len-hyp_len)+s)
+    d_per = s
 
 
     return d_per/ref_len
