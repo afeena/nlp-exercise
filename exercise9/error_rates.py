@@ -1,7 +1,7 @@
 import numpy
 import argparse
 from collections import Counter
-
+import string
 
 def word_error_rate(hyp, ref):
 
@@ -63,8 +63,8 @@ if __name__=="__main__":
     with open(args.hyp) as rf:
         hypothesis = rf.read()
 
-    hypothesis = [h.split() for h in hypothesis.split("\n") if h!=""]
-    references = [r.split() for r in references.split("\n") if r!=""]
+    hypothesis = [[x for x in h.split() if x not in string.punctuation]for h in hypothesis.split("\n") ]
+    references = [[x for x in r.split() if x not in string.punctuation]for r in references.split("\n") ]
     wers = []
     pers = []
     for h,r in zip(hypothesis,references):
