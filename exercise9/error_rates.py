@@ -53,7 +53,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-ref", help="refrence file")
     parser.add_argument("-hyp", help="hypothesis file")
-
+    parser.add_argument("--punct", default=True, help="use punctuation")
     args = parser.parse_args()
 
     with open(args.ref) as rf:
@@ -63,8 +63,13 @@ if __name__=="__main__":
     with open(args.hyp) as rf:
         hypothesis = rf.read()
 
-    hypothesis = [[x for x in h.split() if x not in string.punctuation]for h in hypothesis.split("\n") ]
-    references = [[x for x in r.split() if x not in string.punctuation]for r in references.split("\n") ]
+    if args.punct:
+        hypothesis = [h.split() for h in hypothesis.split("\n")]
+        references = [r.split() for r in references.split("\n")]
+    else:
+        hypothesis = [[x for x in h.split() if x not in string.punctuation]for h in hypothesis.split("\n")]
+        references = [[x for x in r.split() if x not in string.punctuation]for r in references.split("\n")]
+
     wers = []
     pers = []
     for h,r in zip(hypothesis,references):
