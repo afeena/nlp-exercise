@@ -21,11 +21,3 @@ class Alignment:
 
             self.alignment[sent_nr].append(sources)
             self.alignment[sent_nr].append(targets)
-        print(1)
-
-
-
-
-if __name__=="__main__":
-    a = Alignment()
-    a.read_alignment("alignment")
