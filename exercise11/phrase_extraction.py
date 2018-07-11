@@ -6,9 +6,9 @@ def extract_phrase(sent_alignment, sent_pair):
     e_length = len(sent_pair[0])
     f_length = len(sent_pair[1])
 
-    for e_start in range(1,e_length):
+    for e_start in range(e_length):
         for e_end in range(e_start,e_length):
-            f_start, f_end = f_length,0
+            f_start, f_end = f_length-1,-1
             for e,f in zip(sent_alignment[0],sent_alignment[1]):
                 if e_start<=e<=e_end:
                     f_start=min(f,f_start)
@@ -38,10 +38,10 @@ def add_extract(f_start,f_end,e_start,e_end,sent_alignment, f_len):
 
         f_e = f_end
         while True:
-            E.append([i for i in range(e_start,e_end)])
-            E.append([j for j in range(f_s,f_e)])
+            E.append([i for i in range(e_start,e_end+1)])
+            E.append([j for j in range(f_s,f_e+1)])
             f_e+=1
-            if f_e in sent_alignment[1] or f_e > f_len:
+            if f_e in sent_alignment[1] or f_e == f_len:
                 break
         f_s-=1
         if f_s in sent_alignment[1] or f_s < 0:
@@ -66,4 +66,4 @@ def process(source, target, alignment):
             nr+=1
 
 if __name__=="__main__":
-    process('source','target','alignment')
+    process('src','trgt','al')
